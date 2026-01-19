@@ -12,7 +12,7 @@ Projet réalisé par **Raphaël Touzet**.
 ZenCamp/
 ├── index.html                  # Page unique du site (structure HTML)
 ├── documentation/              # Dossier de documentation du projet
-│   └── ZenCamp_Raphael TOUZET_Sebastien PEREIRA.docx
+│   └── ZenCamp_Raphael TOUZET.docx
 ├── images/                     # Visuels utilisés sur le site
 │   ├── bg.jpg
 │   ├── overlay.png
