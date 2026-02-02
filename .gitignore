@@ -1,0 +1,40 @@
+# --- Secrets : ne JAMAIS versionner -----------------------------------
+# Un mot de passe poussé sur GitHub est compromis définitivement.
+src/config/config.php
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Sauvegardes et exports -------------------------------------------
+*.bak
+*.sql.gz
+dump*.sql
+exports/
+
+# --- Dépendances et build ---------------------------------------------
+vendor/
+node_modules/
+.sass-cache/
+
+# --- Logs --------------------------------------------------------------
+*.log
+logs/
+
+# --- Système -----------------------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Fichiers temporaires Word / LibreOffice
+~$*
+.~lock.*
+
+# --- Éditeurs ----------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+
+# --- Documentation (livrables conserves hors depot) ---------------------
+documentation/
