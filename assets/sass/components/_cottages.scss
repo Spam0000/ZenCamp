@@ -1,0 +1,50 @@
+///
+/// ZenCamp
+/// Liste des cottages (section #work)
+///
+
+/* Cottages */
+
+	.cottages {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		grid-gap: 1.5rem;
+		margin: 0 0 _size(element-margin) 0;
+
+		.cottage {
+			border: solid _size(border-width) _palette(border-bg-alt);
+			border-radius: _size(border-radius);
+			padding: 1rem 1rem 0.5rem 1rem;
+
+			.image.fit {
+				margin: 0 0 1rem 0;
+
+				img {
+					aspect-ratio: 4 / 3;
+					object-fit: cover;
+				}
+			}
+
+			h3 {
+				font-size: 0.9rem;
+				margin: 0 0 0.35rem 0;
+			}
+
+			.meta {
+				color: _palette(fg-light);
+				font-size: 0.75rem;
+				letter-spacing: _font(letter-spacing);
+				margin: 0 0 0.75rem 0;
+				text-transform: uppercase;
+			}
+
+			p {
+				font-size: 0.9rem;
+			}
+		}
+
+		@include breakpoint('<=small') {
+			grid-template-columns: 1fr;
+			grid-gap: 1.25rem;
+		}
+	}

@@ -1,0 +1,22 @@
+///
+/// ZenCamp
+/// Logo affiché dans la section de présentation (#intro)
+///
+
+/* Logo (intro) */
+
+	.logo-intro {
+		display: block;
+		margin: 0 auto _size(element-margin) auto;
+		max-width: 14rem;
+
+		img {
+			display: block;
+			width: 100%;
+			height: auto;
+		}
+
+		@include breakpoint('<=xsmall') {
+			max-width: 10rem;
+		}
+	}

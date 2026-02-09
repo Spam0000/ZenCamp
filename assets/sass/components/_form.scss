@@ -83,6 +83,8 @@
 	input[type="password"],
 	input[type="email"],
 	input[type="tel"],
+	input[type="date"],
+	input[type="number"],
 	select,
 	textarea {
 		@include vendor('appearance', 'none');
@@ -140,6 +142,9 @@
 	input[type="text"],
 	input[type="password"],
 	input[type="email"],
+	input[type="tel"],
+	input[type="date"],
+	input[type="number"],
 	select {
 		height: _size(element-height);
 	}
@@ -249,4 +254,15 @@
 	.formerize-placeholder {
 		color: _palette(fg-light) !important;
 		opacity: 1.0;
+	}
+	input[type="date"] {
+		&::-webkit-calendar-picker-indicator {
+			cursor: pointer;
+			filter: invert(1);
+			opacity: 0.5;
+		}
+
+		&:hover::-webkit-calendar-picker-indicator {
+			opacity: 1;
+		}
 	}

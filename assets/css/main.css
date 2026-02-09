@@ -389,6 +389,8 @@ input, select, textarea {
 	input[type="password"],
 	input[type="email"],
 	input[type="tel"],
+	input[type="date"],
+	input[type="number"],
 	select,
 	textarea {
 		-moz-appearance: none;
@@ -414,6 +416,8 @@ input, select, textarea {
 		input[type="password"]:invalid,
 		input[type="email"]:invalid,
 		input[type="tel"]:invalid,
+		input[type="date"]:invalid,
+		input[type="number"]:invalid,
 		select:invalid,
 		textarea:invalid {
 			box-shadow: none;
@@ -423,6 +427,8 @@ input, select, textarea {
 		input[type="password"]:focus,
 		input[type="email"]:focus,
 		input[type="tel"]:focus,
+		input[type="date"]:focus,
+		input[type="number"]:focus,
 		select:focus,
 		textarea:focus {
 			background: rgba(255, 255, 255, 0.075);
@@ -456,6 +462,9 @@ input, select, textarea {
 	input[type="text"],
 	input[type="password"],
 	input[type="email"],
+	input[type="tel"],
+	input[type="date"],
+	input[type="number"],
 	select {
 		height: 2.75rem;
 	}
@@ -1302,6 +1311,18 @@ input, select, textarea {
 				font-size: 2rem;
 			}
 
+		#header .logo.is-image {
+			border: 0;
+			line-height: 0;
+		}
+
+			#header .logo.is-image img {
+				display: block;
+				width: 100%;
+				height: 100%;
+				object-fit: contain;
+			}
+
 		#header .content {
 			border-style: solid;
 			border-color: #ffffff;
@@ -1659,3 +1680,86 @@ input, select, textarea {
 		body.is-preload #footer {
 			opacity: 0;
 		}
+/* Cottages */
+
+	.cottages {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		grid-gap: 1.5rem;
+		margin: 0 0 2rem 0;
+	}
+
+		.cottages .cottage {
+			border: solid 1px rgba(255, 255, 255, 0.175);
+			border-radius: 4px;
+			padding: 1rem 1rem 0.5rem 1rem;
+		}
+
+			.cottages .cottage .image.fit {
+				margin: 0 0 1rem 0;
+			}
+
+			.cottages .cottage .image.fit img {
+				aspect-ratio: 4 / 3;
+				object-fit: cover;
+			}
+
+			.cottages .cottage h3 {
+				font-size: 0.9rem;
+				margin: 0 0 0.35rem 0;
+			}
+
+			.cottages .cottage .meta {
+				color: rgba(255, 255, 255, 0.5);
+				font-size: 0.75rem;
+				letter-spacing: 0.2rem;
+				margin: 0 0 0.75rem 0;
+				text-transform: uppercase;
+			}
+
+			.cottages .cottage p {
+				font-size: 0.9rem;
+			}
+
+	@media screen and (max-width: 736px) {
+
+		.cottages {
+			grid-template-columns: 1fr;
+			grid-gap: 1.25rem;
+		}
+
+	}
+
+/* Logo (intro) */
+
+	.logo-intro {
+		display: block;
+		margin: 0 auto 2rem auto;
+		max-width: 14rem;
+	}
+
+		.logo-intro img {
+			display: block;
+			width: 100%;
+			height: auto;
+		}
+
+	@media screen and (max-width: 480px) {
+
+		.logo-intro {
+			max-width: 10rem;
+		}
+
+	}
+
+/* Form (champs date) */
+
+	input[type="date"]::-webkit-calendar-picker-indicator {
+		cursor: pointer;
+		filter: invert(1);
+		opacity: 0.5;
+	}
+
+	input[type="date"]:hover::-webkit-calendar-picker-indicator {
+		opacity: 1;
+	}
