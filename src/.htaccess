@@ -1,0 +1,81 @@
+# =====================================================================
+#  ZenCamp — Durcissement Apache
+#  Ce fichier protège TOUT le dossier src/. Seul src/public/ doit être
+#  exposé : en production, la racine du VirtualHost pointe sur src/public.
+# =====================================================================
+
+# ---------------------------------------------------------------------
+# 1. Interdiction d'accès direct aux dossiers non publics
+#    Sans cela, https://site/src/config/config.php pourrait exposer le
+#    mot de passe de la base si PHP venait à ne pas interpréter le fichier.
+# ---------------------------------------------------------------------
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+</IfModule>
+
+# ---------------------------------------------------------------------
+# 2. Blocage des fichiers sensibles, quel que soit l'emplacement
+# ---------------------------------------------------------------------
+<FilesMatch "(^\.|\.(sql|log|bak|ini|env|json|lock|md)$|config\.php$)">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+</FilesMatch>
+
+# ---------------------------------------------------------------------
+# 3. En-têtes de sécurité (doublent ceux posés par Html::entetesSecurite,
+#    pour couvrir aussi les fichiers statiques)
+# ---------------------------------------------------------------------
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(), microphone=(), camera=()"
+
+    # N'activer qu'une fois HTTPS opérationnel et vérifié : une erreur ici
+    # rend le site inaccessible pendant toute la durée du max-age.
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+    # Ne pas annoncer la version de PHP / du serveur à l'attaquant.
+    Header always unset X-Powered-By
+    Header always unset Server
+</IfModule>
+
+# ---------------------------------------------------------------------
+# 4. Désactivation du listage des répertoires
+# ---------------------------------------------------------------------
+Options -Indexes -ExecCGI
+
+# ---------------------------------------------------------------------
+# 5. Cookies de session sécurisés au niveau serveur
+# ---------------------------------------------------------------------
+<IfModule mod_php.c>
+    php_flag  display_errors        Off
+    php_flag  log_errors            On
+    php_flag  expose_php            Off
+    php_flag  session.cookie_httponly On
+    php_flag  session.cookie_secure   On
+    php_flag  session.use_strict_mode On
+    php_value session.cookie_samesite "Strict"
+
+    # Empêche PHP d'ouvrir des fichiers hors de l'arborescence du site
+    # (limite l'impact d'une inclusion de fichier arbitraire).
+    php_value open_basedir "/var/www/zencamp:/tmp"
+
+    # Fonctions permettant l'exécution de commandes système.
+    php_value disable_functions "exec,passthru,shell_exec,system,proc_open,popen"
+</IfModule>
+
+# ---------------------------------------------------------------------
+# 6. Redirection HTTPS
+# ---------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTPS} off
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+</IfModule>
