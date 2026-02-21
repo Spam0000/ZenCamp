@@ -11,8 +11,24 @@ Projet réalisé par **Raphaël Touzet**.
 ```
 ZenCamp/
 ├── index.html                  # Page unique du site (structure HTML)
-├── documentation/              # Dossier de documentation du projet
-│   └── ZenCamp_Raphael TOUZET.docx
+├── src/                        # Back-end (implémentation de référence, PHP 8)
+│   ├── config/
+│   │   └── config.example.php  # Modèle de configuration (config.php est ignoré par git)
+│   ├── security/               # Bibliothèque de sécurité
+│   │   ├── Database.php        # PDO, requêtes préparées
+│   │   ├── Html.php            # Échappement contextuel, CSP
+│   │   ├── Csrf.php            # Jetons anti-CSRF
+│   │   ├── Password.php        # Argon2id
+│   │   ├── BruteForce.php      # Limitation compte + IP
+│   │   ├── Session.php         # Sessions durcies
+│   │   ├── Validation.php      # Validation en liste blanche
+│   │   └── Rgpd.php            # Consentement, export, effacement
+│   ├── public/
+│   │   └── connexion.php       # Exemple assemblant les protections
+│   └── .htaccess               # Durcissement serveur
+├── tests/                      # Campagne de tests (voir tests/README.md)
+│   ├── js/                     # Tests unitaires et structurels (Node)
+│   └── php/                    # Tests de securite (PHP)
 ├── images/                     # Visuels utilisés sur le site
 │   ├── bg.jpg
 │   ├── overlay.png
@@ -36,6 +52,7 @@ ZenCamp/
 │   │   ├── browser.min.js
 │   │   ├── breakpoints.min.js
 │   │   ├── util.js
+│   │   ├── telephone.js        # Formatage du champ telephone (teste)
 │   │   └── main.js
 │   └── webfonts/               # Polices d'icônes Font Awesome (eot, svg, ttf, woff, woff2)
 ├── LICENSE.txt
@@ -54,8 +71,10 @@ ZenCamp/
 | Icônes             | Font Awesome                        |
 | Base du template   | [Dimension by HTML5 UP](https://html5up.net/dimension) |
 | Versionnage         | Git / GitHub                        |
+| Base de données     | **MySQL 8 / MariaDB** (InnoDB, utf8mb4) — *conception* |
+| Back-end            | **PHP 8 / PDO** — *implémentation de référence* |
 
-> Le site est un projet **front-end statique** (aucun back-end, base de données ou framework JS à ce stade) : il sert de vitrine/maquette pour la future plateforme e-commerce ZenCamp.
+> La page publique reste un **front-end statique**. Le dossier `src/` contient une implémentation de référence des mécanismes de sécurité de la future plateforme e-commerce — non branchée sur `index.html` à ce stade. La conception de la base de données et le plan de tests font partie des livrables du dossier de projet, conservés hors dépôt.
 
 ---
 
@@ -101,7 +120,6 @@ Le fonctionnement est simple : `index.html` définit le contenu et la structure 
 - **`assets/js/main.js`** — Script principal gérant les comportements spécifiques au site (menus, animations…).
 - **`assets/js/util.js`** — Fonctions utilitaires réutilisées par les autres scripts.
 - **`images/`** — Photos et arrière-plans utilisés dans les différentes sections du site.
-- **`documentation/`** — Dossier contenant le rapport de projet (.docx) rédigé par les auteurs.
 - **`LICENSE.txt`** — Licence du template de base (HTML5 UP, Creative Commons).
 
 ---
