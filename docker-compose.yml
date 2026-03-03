@@ -1,0 +1,129 @@
+# =====================================================================
+#  ZenCamp — Pile de développement
+#
+#    docker compose up -d --build     démarre le site et la base
+#    docker compose --profile tests run --rm tests    joue les 50 tests
+#    docker compose down -v           arrête tout et efface les données
+#
+#  Vitrine    http://localhost:8080
+#  Connexion  http://localhost:8080/app/connexion.php
+#  phpMyAdmin http://localhost:8081
+# =====================================================================
+
+services:
+
+  # -------------------------------------------------------------------
+  # Serveur web + PHP
+  # -------------------------------------------------------------------
+  web:
+    build: .
+    image: zencamp/web:local
+    container_name: zencamp-web
+    restart: unless-stopped
+    ports:
+      - "${ZENCAMP_PORT:-8080}:80"
+    environment:
+      ZENCAMP_DB_HOST: db
+      ZENCAMP_DB_PORT: 3306
+      ZENCAMP_DB_NAME: ${MYSQL_DATABASE:-zencamp}
+      ZENCAMP_DB_USER: ${ZENCAMP_DB_USER:-zencamp_app}
+      ZENCAMP_DB_PASSWORD: ${ZENCAMP_DB_PASSWORD:-mot_de_passe_developpement}
+      ZENCAMP_URL: http://localhost:${ZENCAMP_PORT:-8080}
+      ZENCAMP_ENV: developpement
+      ZENCAMP_DEBUG: "false"
+      # Clé AES-256 en base64 (32 octets décodés) pour les données de santé.
+      # Générer la vôtre : php -r "echo base64_encode(random_bytes(32));"
+      ZENCAMP_CLE_CHIFFREMENT: ${ZENCAMP_CLE_CHIFFREMENT:-}
+    volumes:
+      # Montages de développement : modifier un fichier sur le disque se
+      # voit immédiatement dans le navigateur, sans reconstruire l'image.
+      # À retirer pour un déploiement, où seule l'image compte.
+      - ./index.html:/var/www/html/index.html:ro
+      # Seuls les assets compilés sont exposés : les sources Sass
+      # n'ont rien à faire sur un serveur web.
+      - ./assets/css:/var/www/html/assets/css:ro
+      - ./assets/js:/var/www/html/assets/js:ro
+      - ./assets/webfonts:/var/www/html/assets/webfonts:ro
+      - ./images:/var/www/html/images:ro
+      - ./src/security:/var/www/zencamp/src/security:ro
+      - ./src/public:/var/www/zencamp/src/public:ro
+      - ./tests:/var/www/zencamp/tests:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - zencamp
+
+  # -------------------------------------------------------------------
+  # Base de données
+  # -------------------------------------------------------------------
+  db:
+    image: mysql:8.4
+    container_name: zencamp-db
+    restart: unless-stopped
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_developpement}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-zencamp}
+    ports:
+      # Exposé en local pour Workbench ou DBeaver. Commenter cette
+      # section si le port 3306 est déjà pris sur la machine.
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+      # Scripts joués une seule fois, à la création du volume, dans
+      # l'ordre alphabétique des noms de fichiers.
+      - ./documentation/base-de-donnees/zencamp.sql:/docker-entrypoint-initdb.d/10-zencamp.sql:ro
+      - ./documentation/base-de-donnees/zencamp_securite.sql:/docker-entrypoint-initdb.d/20-zencamp-securite.sql:ro
+      - ./docker/mysql/30-utilisateur-docker.sql:/docker-entrypoint-initdb.d/30-utilisateur-docker.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-root_developpement}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    networks:
+      - zencamp
+
+  # -------------------------------------------------------------------
+  # Administration de la base (développement uniquement)
+  # -------------------------------------------------------------------
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: zencamp-phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "${PHPMYADMIN_PORT:-8081}:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      UPLOAD_LIMIT: 64M
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - zencamp
+
+  # -------------------------------------------------------------------
+  # Campagne de tests — service ponctuel, ne démarre pas avec « up »
+  #   docker compose --profile tests run --rm tests
+  # -------------------------------------------------------------------
+  tests:
+    build: .
+    image: zencamp/web:local
+    container_name: zencamp-tests
+    profiles: ["tests"]
+    working_dir: /var/www/zencamp
+    command: php tests/php/run.php
+    volumes:
+      - ./src/security:/var/www/zencamp/src/security:ro
+      - ./tests:/var/www/zencamp/tests:ro
+    networks:
+      - zencamp
+
+volumes:
+  db-data:
+
+networks:
+  zencamp:
+    driver: bridge

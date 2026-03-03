@@ -1,0 +1,40 @@
+# Rien de tout cela n'a sa place dans l'image.
+
+.git
+.gitignore
+.github
+
+# Livrables et documentation : hors dépôt et hors image.
+documentation/
+
+# Secrets : la configuration réelle est produite au build depuis le
+# modèle, et alimentée par des variables d'environnement.
+src/config/config.php
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Sources Sass : seul le CSS compilé est servi.
+assets/sass/
+
+# Dépendances et artefacts
+node_modules/
+vendor/
+.sass-cache/
+
+# Fichiers Docker eux-mêmes (le contexte n'en a pas besoin dans l'image)
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.*.yml
+
+# Éditeurs et système
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+~$*
