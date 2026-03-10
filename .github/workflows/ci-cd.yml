@@ -1,0 +1,243 @@
+# =====================================================================
+#  ZenCamp — Intégration et déploiement continus
+#
+#  Déclenchement : à chaque push sur main, à chaque pull request, et
+#  manuellement depuis l'onglet Actions.
+#
+#  Étapes : contrôle des secrets, tests front, tests de sécurité PHP,
+#  construction et test de l'image Docker, puis publication de la
+#  vitrine sur GitHub Pages (uniquement depuis main, si tout est vert).
+# =====================================================================
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Une seule exécution à la fois par branche : un nouveau push annule
+# l'exécution précédente, encore en cours.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+
+  # -------------------------------------------------------------------
+  # 1. Aucun secret ne doit se trouver dans le dépôt
+  # -------------------------------------------------------------------
+  secrets:
+    name: Contrôle des secrets
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vérifier qu'aucun fichier sensible n'est versionné
+        run: |
+          set -euo pipefail
+          echec=0
+
+          for interdit in \
+            "src/config/config.php" \
+            ".env" \
+            "documentation"
+          do
+            if git ls-files --error-unmatch "$interdit" >/dev/null 2>&1; then
+              echo "::error::$interdit ne doit pas être versionné"
+              echec=1
+            fi
+          done
+
+          # Un mot de passe en dur dans le code applicatif.
+          if git grep -nEI "(password|mot_de_passe)\s*=\s*['\"][^'\"]{6,}['\"]" -- src/ \
+             | grep -v "config.example.php"; then
+            echo "::error::mot de passe en dur détecté dans src/"
+            echec=1
+          fi
+
+          exit $echec
+
+  # -------------------------------------------------------------------
+  # 2. Tests front — formatage du téléphone et structure du formulaire
+  # -------------------------------------------------------------------
+  tests-front:
+    name: Tests front (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Tests unitaires et structurels
+        run: node --test tests/js/*.test.js
+
+  # -------------------------------------------------------------------
+  # 3. Tests de sécurité PHP
+  # -------------------------------------------------------------------
+  tests-securite:
+    name: Tests de sécurité (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.1', '8.2', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: mbstring, pdo_mysql, openssl, sodium
+          coverage: none
+
+      - name: Contrôle de syntaxe
+        run: |
+          set -euo pipefail
+          find src tests -name '*.php' -print0 \
+            | xargs -0 -n1 -P4 php -l
+
+      - name: Campagne de tests
+        run: php tests/php/run.php
+
+  # -------------------------------------------------------------------
+  # 4. Image Docker : construction puis test de fumée
+  # -------------------------------------------------------------------
+  image:
+    name: Image Docker
+    runs-on: ubuntu-latest
+    needs: [tests-front, tests-securite]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Construire l'image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: zencamp/web:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Démarrer le conteneur
+        run: docker run -d --name zencamp-ci -p 8080:80 zencamp/web:ci
+
+      - name: Attendre la réponse du serveur
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8080/ >/dev/null 2>&1; then
+              echo "Serveur prêt après ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::le serveur n'a pas répondu en 30 s"
+          docker logs zencamp-ci
+          exit 1
+
+      - name: La vitrine est servie
+        run: curl -fsS http://localhost:8080/ | grep -q "ZenCamp"
+
+      - name: Le code PHP n'est pas exposé
+        run: |
+          set -euo pipefail
+          for chemin in \
+            "src/security/Database.php" \
+            "src/config/config.php" \
+            "tests/php/run.php"
+          do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:8080/$chemin")
+            echo "$chemin -> HTTP $code"
+            if [ "$code" = "200" ]; then
+              echo "::error::$chemin est accessible depuis le web"
+              exit 1
+            fi
+          done
+
+      - name: Les en-têtes de sécurité sont posés
+        run: |
+          set -euo pipefail
+          entetes=$(curl -sSI http://localhost:8080/)
+          echo "$entetes"
+          for entete in "X-Content-Type-Options" "X-Frame-Options" "Referrer-Policy"; do
+            echo "$entetes" | grep -qi "$entete" \
+              || { echo "::error::en-tête $entete absent"; exit 1; }
+          done
+
+      - name: Journal du conteneur en cas d'échec
+        if: failure()
+        run: docker logs zencamp-ci
+
+      - name: Arrêter le conteneur
+        if: always()
+        run: docker rm -f zencamp-ci
+
+  # -------------------------------------------------------------------
+  # 5. Validation de la pile docker compose
+  # -------------------------------------------------------------------
+  compose:
+    name: Pile docker compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Valider la configuration
+        run: |
+          cp .env.example .env
+          docker compose config --quiet
+          echo "Services déclarés :"
+          docker compose config --services
+
+  # -------------------------------------------------------------------
+  # 6. Déploiement continu de la vitrine sur GitHub Pages
+  #    Uniquement depuis main, et seulement si tout le reste est vert.
+  # -------------------------------------------------------------------
+  deploiement:
+    name: Déploiement de la vitrine
+    runs-on: ubuntu-latest
+    needs: [secrets, tests-front, tests-securite, image, compose]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.publication.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assembler la vitrine
+        run: |
+          set -euo pipefail
+          mkdir -p site
+          cp index.html site/
+          cp -r images site/
+          mkdir -p site/assets
+          # Seuls les assets compilés : les sources Sass ne sont pas publiées.
+          cp -r assets/css assets/js assets/webfonts site/assets/
+          echo "Contenu publié :"
+          du -sh site
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: publication
+        uses: actions/deploy-pages@v4
