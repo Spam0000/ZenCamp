@@ -233,7 +233,11 @@ jobs:
           echo "Contenu publié :"
           du -sh site
 
+      # enablement active GitHub Pages automatiquement si le dépôt ne
+      # l'a pas encore, plutôt que d'échouer sur « Get Pages site failed ».
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:
