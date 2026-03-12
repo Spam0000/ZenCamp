@@ -1,5 +1,7 @@
 # 🧘 ZenCamp
 
+[![CI/CD](https://github.com/Spam0000/ZenCamp/actions/workflows/ci-cd.yml/badge.svg)](https://github.com/Spam0000/ZenCamp/actions/workflows/ci-cd.yml)
+
 **ZenCamp** est un site vitrine présentant une future plateforme e-commerce dédiée à la vente en ligne de séjours bien-être (retraites de yoga, méditation, digital detox). La plateforme visée proposera des séjours sous différents formats — individuels, groupes ou événements spéciaux — avec une expérience utilisateur sécurisée, intuitive et personnalisée.
 
 Projet réalisé par **Raphaël Touzet**.
@@ -10,7 +12,15 @@ Projet réalisé par **Raphaël Touzet**.
 
 ```
 ZenCamp/
+├── .github/workflows/
+│   └── ci-cd.yml               # Pipeline d’integration et de deploiement continus
 ├── index.html                  # Page unique du site (structure HTML)
+├── Dockerfile                  # Image Apache + PHP 8.3
+├── docker-compose.yml          # Pile web + MySQL + phpMyAdmin
+├── docker/                     # Configuration des conteneurs
+│   ├── apache/zencamp.conf     # VirtualHost, alias /app, en-tetes
+│   ├── php/zencamp.ini         # Reglages PHP durcis
+│   └── mysql/30-utilisateur-docker.sql  # Compte applicatif reseau Docker
 ├── src/                        # Back-end (implémentation de référence, PHP 8)
 │   ├── config/
 │   │   └── config.example.php  # Modèle de configuration (config.php est ignoré par git)
@@ -121,6 +131,66 @@ Le fonctionnement est simple : `index.html` définit le contenu et la structure 
 - **`assets/js/util.js`** — Fonctions utilitaires réutilisées par les autres scripts.
 - **`images/`** — Photos et arrière-plans utilisés dans les différentes sections du site.
 - **`LICENSE.txt`** — Licence du template de base (HTML5 UP, Creative Commons).
+
+---
+
+## 🐳 Démarrage avec Docker
+
+La pile complète (Apache + PHP 8.3, MySQL 8.4, phpMyAdmin) se lance en une commande.
+
+```bash
+cp .env.example .env          # adapter les ports et mots de passe si besoin
+docker compose up -d --build
+```
+
+| Service | Adresse |
+|---|---|
+| Vitrine | http://localhost:8080 |
+| Exemple de connexion sécurisée | http://localhost:8080/app/connexion.php |
+| phpMyAdmin | http://localhost:8081 |
+| MySQL | `localhost:3306` |
+
+La base est créée et peuplée au premier démarrage à partir des scripts SQL
+du dossier de conception. Pour repartir d’une base vierge :
+
+```bash
+docker compose down -v && docker compose up -d
+```
+
+### Jouer la campagne de tests
+
+Aucune installation de PHP n’est nécessaire sur le poste :
+
+```bash
+docker compose --profile tests run --rm tests
+```
+
+### Organisation retenue
+
+L’image reproduit la séparation attendue en production : la racine web
+(`/var/www/html`) ne contient que la vitrine statique, tandis que le code PHP
+vit dans `/var/www/zencamp`, hors racine web. Seul `src/public` est exposé,
+via l’alias `/app`. Le compte MySQL applicatif n’a que les privilèges
+`SELECT`, `INSERT`, `UPDATE` et `DELETE`.
+
+---
+
+## ⚙️ Intégration et déploiement continus
+
+Le pipeline [`.github/workflows/ci-cd.yml`](.github/workflows/ci-cd.yml) se déclenche
+à chaque push sur `main`, à chaque pull request, et manuellement depuis l’onglet Actions.
+
+| Étape | Contenu |
+|---|---|
+| Contrôle des secrets | Vérifie qu’aucun `config.php`, `.env` ni mot de passe en dur n’est versionné |
+| Tests front | 18 cas (formatage du téléphone, structure du formulaire) sur Node 20 et 22 |
+| Tests de sécurité | 50 cas (validation, Argon2id, XSS, injection SQL, CSRF) sur PHP 8.1, 8.2 et 8.3 |
+| Image Docker | Construction, démarrage du conteneur, puis vérification que la vitrine répond, que le code PHP n’est pas exposé et que les en-têtes de sécurité sont posés |
+| Pile compose | Validation de `docker-compose.yml` |
+| Déploiement | Publication de la vitrine sur GitHub Pages, uniquement depuis `main` et si tout le reste est vert |
+
+Le déploiement suppose que GitHub Pages soit activé sur le dépôt, avec
+**Settings → Pages → Source : GitHub Actions**.
 
 ---
 
